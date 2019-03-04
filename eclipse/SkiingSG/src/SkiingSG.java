@@ -11,375 +11,315 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 
+
 public class SkiingSG {
-    
+
     final static int DIMENSION = 1000;
 
-	private static final int EAST = 0;
-	private static final int NORTH = 1;
-	private static final int WEST = 2;
-	private static final int SOUTH = 3;
-	
-    
-    private static int hereX=0;
-    private static int hereY=0;
-    
-    private ArrayList<Path> allPaths;
-    
-    SkiingSG (){
-    	ArrayList<Path> allPaths = new ArrayList<Path>();
-    }
-    
+    enum Direction {East, North, West, South};
+
+//    private static int hereX=0;
+//    private static int hereY=0;
+
+    private int maxSteepness = 0;
+    private int maxLength = 0;
+
+    Tile firstTileOfSlope;
+    Tile endOfSlope = new Tile();
+
+    Spot resultStart = new Spot(0,0);
+    Spot resultEnd = new Spot (0,0);
+//   Spot here = new Spot(0,0);
+
     class Spot {
-    	int x,y;   	
-    	Spot(int x, int y){
-    		this.x=x;
-    		this.y=y;
-    	}
+	int x,y;   	
+	Spot (int x, int y){
+	    this.x=x;
+	    this.y=y;
+	}
+	
+	Spot (Direction d, Spot s){
+	    switch (d){
+	    case East:
+		this.x=s.x;
+		this.y=s.y+1;
+		break;
+	    case West:
+		this.x = s.x;
+		this.y = s.y-1;
+		break;
+	    case North:
+		this.x =  s.x-1;
+		this.y = s.y;
+		break;
+	    case South:
+		this.x=s.x+1;
+		this.y=s.y;
+		break;
+	    }
+			
+	}
+	
+	private void printstr() {
+	    System.out.print("("+this.x+","+this.y+")");
+	}
+
+	public void setSpot(Spot s) {
+	    this.x=s.x;
+	    this.y=s.y;
+	}
     }
-    
-    private static int[][] landscape=new int[DIMENSION][DIMENSION];
+
+    private class Tile {
+
+	Spot s;
+	int distanceFromRoot;
+	int level;
+	int diffLevel;
+	Tile fromTile;
+	Tile east, north, west, south;
+	
+	private void printstr(){
+	    System.out.println("Tile at ("+this.s.x+","+this.s.y+") @"+level+
+		    "Diff from Top:" + diffLevel +
+		    ", length of Slope:"+(this.distanceFromRoot+1));
+	}
+	
+	Tile(Spot s, int dfr, Tile t, Spot startOfSlope) {
+	    this.s=new Spot(s.x,s.y);
+	    this.distanceFromRoot = dfr;
+	    level = landscape[s.x][s.y];
+	    diffLevel = landscape[startOfSlope.x][startOfSlope.y]-level;
+	    east = null;
+	    north = null;
+	    west = null;
+	    south = null;
+	    fromTile = t;
+	}
+	Tile() {
+	   s = new Spot(0,0);
+	   distanceFromRoot = 0;
+	   level = 0;
+	   east = null;
+	   north = null;
+	   west = null;
+	   south = null;
+	   fromTile = null;
+	}
+    }
+
+    private int[][] landscape=new int[DIMENSION][DIMENSION];
 
     public int[][] getLandscape() {
-    	return landscape;
+	return landscape;
     }
 
     public void setLandscape(int[][] landscape) {
-    	this.landscape = landscape;
-    }
-    
-    private boolean findStartAboveLevel (int minLevel) {
-    	for (int i=0;i<DIMENSION;i++){
-    		for (int j=0;j<DIMENSION;j++) {
-    			if ((isLocalMax(i,j)) && (landscape[i][j]>minLevel)) {
-    				hereX=i;
-    				hereY=j;
-    				return true;
-    			}
-    		}
-    	}
-    	return false;
+	this.landscape = landscape;
     }
 
+    private boolean westSmaller (Spot s) {
+	return westSmaller (s.x,s.y);
+    }
     
-    class Path {
-    	int totalSlope;
-    	ArrayList<Spot> slope;
-   	
-    	// Constructor to start a new path at Spot s
-    	Path (Spot s) {
-    		totalSlope=0;
-        	slope = new ArrayList<Spot>(); 		
-    		slope.add(s);
-    	}
-    	
-    	// Constructor to create a new Path, copy the existing p and
-    	// append a Spot s
-    	Path (Path p, Spot s){
-        	slope = new ArrayList<Spot>(); 	
-    		for (Spot item : p.slope) {
-    			this.slope.add(item);
-    		}
-     		this.slope.add(s);
-     		totalSlope=landscape[slope.get(0).x][slope.get(0).y]-
-     				landscape[(slope.get(slope.size()-1)).x][(slope.get(slope.size()-1)).y];
-    	}
-    } //end class Path
+    private boolean westSmaller(int i, int j) {
+	if (j==0) {
+	    return false;
+	} else if (landscape[i][j]>landscape[i][j-1]){
+	    return true;
+	}
+	return false;
+    }
+
+    private boolean eastSmaller (Spot s) {
+	return eastSmaller (s.x,s.y);
+    }
     
-    private static boolean isLocalMax(int i, int j) {
-    	if (eastSmaller(i,j) && westSmaller(i,j) && southSmaller(i,j) && northSmaller(i,j)) {
-    		return true;
-    	} 		
-		return false;
+    private boolean eastSmaller(int i, int j) {
+	if (j==DIMENSION-1) {
+	    return false;
+	} else if (landscape[i][j]>landscape[i][j+1]){
+	    return true;
 	}
+	return false;
+    }
 
-	private static boolean northSmaller(int i, int j) {
-		if (j==0) {
-			return true;
-		} else if (landscape[i][j]>landscape[i][j-1]){
-			return true;
-		}
-		return false;
+    private boolean northSmaller (Spot s) {
+	return northSmaller (s.x,s.y);
+    }
+    
+    private boolean northSmaller(int i, int j) {
+	if (i==0) {
+	    return false;
+	} else if (landscape[i][j]>landscape[i-1][j]){
+	    return true;
 	}
+	return false;
+    }
 
-	private static boolean southSmaller(int i, int j) {
-		if (j==DIMENSION) {
-			return true;
-		} else if (landscape[i][j]>landscape[i][j+1]){
-			return true;
-		}
-		return false;
+    private boolean southSmaller (Spot s) {
+	return southSmaller (s.x,s.y);
+    }
+    
+    private  boolean southSmaller(int i, int j) {
+	if (i==DIMENSION-1) {
+	    return false;
+	} else if (landscape[i][j]>landscape[i+1][j]){
+	    return true;
 	}
+	return false;
+    }
 
-	private static boolean westSmaller(int i, int j) {
-		if (i==0) {
-			return true;
-		} else if (landscape[i][j]>landscape[i-1][j]){
-			return true;
-		}
-		return false;
-	}
-
-	private static boolean eastSmaller(int i, int j) {
-		if (i==DIMENSION) {
-			return true;
-		} else if (landscape[i][j]>landscape[i+1][j]){
-			return true;
-		}
-		return false;
-	}
-
-	private static boolean readFileToLandscape(String filename) {
-		FileReader afile;
-		try {
-			afile = new FileReader(filename);
-		} catch (FileNotFoundException e) {
-			return false;
+    private  boolean readFileToLandscape(String filename) {
+	FileReader afile;
+	try {
+	    afile = new FileReader(filename);
+	} catch (FileNotFoundException e) {
+	    return false;
+	};
+	String line;
+	String word;
+	BufferedReader br = new BufferedReader (afile);
+	try {
+	    line = br.readLine();
+	    StringTokenizer st = new StringTokenizer(line);
+	    // read the first line which should contain twice "<DIMENSION>"
+	    while ( st.hasMoreTokens() ) {
+		word = st.nextToken();
+		if (Integer.parseInt(word)!=DIMENSION) {
+		    br.close();
+		    afile.close();
+		    return false;
 		};
-		String line;
-		String word;
-		BufferedReader br = new BufferedReader (afile);
-		try {
-			line = br.readLine();
-			StringTokenizer st = new StringTokenizer(line);
-			// read the first line which should contain twice "1000"
-			while ( st.hasMoreTokens() ) {
-				word = st.nextToken();
-				if (Integer.parseInt(word)!=1000) {
-					br.close();
-					afile.close();
-					return false;
-				};
-			}
-			for (int i=0;i<DIMENSION;i++){
-				line = br.readLine();
-				st = new StringTokenizer(line);
-				for (int j=0;j<DIMENSION;j++) {
-					if (st.hasMoreTokens()) {
-						word = st.nextToken();
-						// extract integers from a text file, then do the caculation.
-						landscape[i][j]=Integer.parseInt(word);
-					}
-				}			  
-			}
-			br.close();
-			afile.close();
-			return true;
-		}
-		catch (IOException e) {
-			return false;
-		}
+	    }
+	    for (int i=0;i<DIMENSION;i++){
+		line = br.readLine();
+		st = new StringTokenizer(line);
+		for (int j=0;j<DIMENSION;j++) {
+		    if (st.hasMoreTokens()) {
+			word = st.nextToken();
+			this.landscape[i][j]=Integer.parseInt(word);
+		    }
+		}			  
+	    }
+	    br.close();
+	    afile.close();
+	    return true;
 	}
+	catch (IOException e) {
+	    return false;
+	}
+    }
 
-	private int possibilities (Spot s) {
-		int k=0;
-		if (northSmaller (s.x, s.y)) {
-			k++;
-		}
-		if (southSmaller (s.x, s.y)) {
-			k++;
-		}
-		if (westSmaller (s.x, s.y)) {
-			k++;
-		}
-		if (eastSmaller (s.x, s.y)) {
-			k++;
-		}
-		return k;
+    private void findBestSlope(int lowestLevel) {
+	for (int i = 0; i < DIMENSION; i++){
+	    for (int j = 0; j < DIMENSION; j++){
+		firstTileOfSlope = buildTreeFromHere(new Spot(i,j), 0, null, new Spot(i,j));
+		findLongestAndSteepestSlope (firstTileOfSlope);
+	    }
 	}
-	
-	private int directionSwitch (Spot s) {
-		/* this creates an integer between 0 and 15 which 
-		 * represents all possibilities what could be done at one point
-		 * 0 means "the path ends here"
-		 * 15 means "you can go in all directions"
-		 * 1,2,4,8 means "you can go only east, north, west or south respectively"
-		 * 3 means "you can go east and north"
-		 * 5 means "you can go east and west"
-		 * 9 means "you can go east and south"
-		 * 6 means "you can go north and west"
-		 * 10 means "you can go north and south"
-		 * 12 means "you can go west and south"
-		 * 7 means "you can go east, north and west"
-		 * 11 means "you can go east, north and south"
-		 * 13 means "you can go east, west and south"
-		 * 14 means "you can go north, west and south"
-		 */
-		int result = 0;
-		if (eastSmaller(s.x,s.y)) {
-			result +=1;
-		}
-		if (northSmaller(s.x,s.y)) {
-			result +=2;
-		}
-		if (westSmaller(s.x,s.y)) {
-			result +=4;
-		}
-		if (southSmaller(s.x,s.y)) {
-			result +=8;
-		}
-		return result;
-	}
-	
-	private void findBestSlope(int lowestLevel) {
-		/*
-		 * Picks a local maximum which is higher than the best slope so far
-		 */
-		findStartAboveLevel(lowestLevel);
-		Spot here = new Spot(hereX, hereY);
-	}
+    }
 
-	private void goDirection(int direction, Path p, Spot s) {
-		Spot nextSpot = new Spot(s.x,s.y);
-		switch (direction) {
-		case EAST:
-			nextSpot.x+=1;
-			break;
-		case NORTH:
-			nextSpot.y+=1;
-			break;
-		case WEST:
-			nextSpot.x-=1;
-			break;
-		case SOUTH:
-			nextSpot.y-=1;
-			break;
-		default:
-			break; }
-		if (p!=null) {
-			Path splitPath = new Path(p,nextSpot);
-			allPaths.add(splitPath);		
-		} else {
-			p.slope.add(nextSpot);
-		}
+    private void findLongestAndSteepestSlope(Tile t) {
+	/* Browse through the tree and find the maximum length and
+	 * maximum steepness. The maxLength starts at 0 and not 1 as in colloquial language
+	 */
+	/* we found a leaf, let us check whether this is the maximum
+	 */
+	if ((t.east==null) && (t.north==null) && (t.west==null) && (t.south==null)) {
+	    if ( (t.diffLevel >= maxSteepness) && (t.distanceFromRoot >= maxLength)) {
+		maxLength = t.distanceFromRoot;
+		maxSteepness = t.diffLevel;
+		resultEnd = t.s;
+		resultStart = firstTileOfSlope.s;
+	    }
+	} else {
+	    if (t.east!=null) {
+		findLongestAndSteepestSlope(t.east);
+	    }
+	    if (t.north!=null) {
+		findLongestAndSteepestSlope(t.north);
+	    }
+	    if (t.west!=null) {
+		findLongestAndSteepestSlope(t.west);
+	    }
+	    if (t.south!=null) {
+		findLongestAndSteepestSlope(t.south);
+	    }
 	}
-	
-	
-	private void findSlopeFromHere (Path p, Spot s) {
-		switch (directionSwitch(s)) {
-		case 1: 
-			goDirection(EAST,null,s);
-			break;
-		case 2:
-			goDirection(NORTH,null,s);
-			break;
-		case 4:
-			goDirection(WEST,null,s);
-			break;
-		case 8:
-			goDirection(SOUTH,null,s);
-			break;
-		case 3: {
-			// go east with a new path
-			goDirection(EAST,p,s);
-			// go north with the same path
-			goDirection(NORTH,null,s);
-			break;}
-		case 5:{
-			// go east with a new path
-			nextSpot.x+=1;			
-			Path splitPath = new Path(p,nextSpot);
-			allPaths.add(splitPath);
-			// go west with the same path
-			nextSpot.x=s.x-1;
-			nextSpot.y=s.y;
-			p.slope.add(nextSpot);
-			break;}
-		case 9:{
-			// go east with a new path
-			nextSpot.x+=1;			
-			Path splitPath = new Path(p,nextSpot);
-			allPaths.add(splitPath);
-			// go south with the same path
-			nextSpot.x=s.x;
-			nextSpot.y=s.y-1;
-			p.slope.add(nextSpot);
-			break;}
-		case 6:{
-			// go north with a new path
-			nextSpot.y+=1;			
-			Path splitPath = new Path(p,nextSpot);
-			allPaths.add(splitPath);
-			// go west with the same path
-			nextSpot.x=s.x-1;
-			nextSpot.y=s.y;
-			p.slope.add(nextSpot);
-			break;}
-		case 10:{
-			// go north with a new path
-			nextSpot.y+=1;			
-			Path splitPath = new Path(p,nextSpot);
-			allPaths.add(splitPath);
-			// go south with the same path
-			nextSpot.x=s.x;
-			nextSpot.y=s.y-1;
-			p.slope.add(nextSpot);
-			break;}
-		case 12:{
-			// go west with a new path
-			nextSpot.x-=1;			
-			Path splitPath = new Path(p,nextSpot);
-			allPaths.add(splitPath);
-			// go south with the same path
-			nextSpot.x=s.x;
-			nextSpot.y=s.y-1;
-			p.slope.add(nextSpot);
-			break;}
-		case 7:{
-			// go east with a new path
-			nextSpot.x+=1;			
-			Path splitPath = new Path(p,nextSpot);
-			allPaths.add(splitPath);
-			// go north with a new path
-			nextSpot.y+=1;			
-			Path splitPath2 = new Path(p,nextSpot);
-			allPaths.add(splitPath2);
-			// go west with the same path
-			nextSpot.x=s.x-1;
-			nextSpot.y=s.y;
-			p.slope.add(nextSpot);
-			break;}
-//more to come
+    }
 
-			
-		default:
-			break;
-		}
-		
+    private Tile buildTreeFromHere(Spot s, int levelFromRoot, Tile upT, Spot startOfSlope) {
+	/*
+	 * This will build a spanning tree from the spot s.
+	 * It will simply add a node to every side where we can go downhill
+	 * startOfSlope is the beginning of the Slope. The hierarchy Length and Level difference is calculated from there
+	 * with the Tile constructor
+	 * In order to be able to find the way up easily I put a reference in the tile 
+	 * to lead the way back to the top.
+	 */
+	Tile t = new Tile (s, levelFromRoot, upT, startOfSlope);
+//	System.out.print("make tile at ");s.printstr();System.out.println();
+//	t.printstr();
+	if (eastSmaller(t.s)){
+	    t.east=buildTreeFromHere(eastOf(t.s), t.distanceFromRoot+1, t, startOfSlope);
 	}
-	
- 	private void initiateNewPath(Path p, int hereX2, int hereY2) {
-		
+	if (northSmaller(t.s)){
+	    t.north=buildTreeFromHere(northOf(t.s), t.distanceFromRoot+1, t, startOfSlope);
 	}
+	if (westSmaller(t.s)){
+	    t.west=buildTreeFromHere(westOf(t.s), t.distanceFromRoot+1, t, startOfSlope);
+	}
+	if (southSmaller(t.s)){
+	    t.south=buildTreeFromHere(southOf(t.s), t.distanceFromRoot+1, t, startOfSlope);
+	}
+//	System.out.print("return value");
+//	t.printstr();
+	return t;
+    }
 
-	private static void printBestSlopeToConsole() {
-		// TODO Auto-generated method stub
-	}
+     private Spot northOf(Spot from) {
+	Spot here = new Spot( Direction.North, from);
+	return here;
+   }
 
-	private static void printStartingPointToConsole() {
-		System.out.println("Starting Point:"+hereX+" "+hereY);
-	}
+    private Spot southOf(Spot from) {
+	Spot here = new Spot( Direction.South, from);
+	return here;
+    }
 
-	/**
-     * @param arguments is an absolute filename where I should 
-     * find a 1000x1000 matrix of int. The first two numbers should be 1000
+   private Spot eastOf(Spot from) {
+       Spot here = new Spot ( Direction.East, from);
+	return here;
+    }
+   
+    private Spot westOf(Spot from) {
+	Spot here = new Spot ( Direction.West, from);
+	return here;
+    }
+
+
+    private void printBestSlopeToConsole() {
+	System.out.println("Longest Path is "+ (maxLength+1) + " long and " + maxSteepness + " steep.");
+	System.out.print("It starts at (" + resultStart.x + "," + resultStart.y + ") and ends at (");
+	System.out.print(resultEnd.x + "," + resultEnd.y + ").");
+    }
+
+    /**
+     * @param arguments[0] is an absolute filename where I should 
+     * find a 1000x1000 matrix of integer values. The first two numbers should be 1000
      */
     public static void main(String[] args) {
-    	SkiingSG myArena = new SkiingSG();
-    	String filename = args[0];
-    	if (!readFileToLandscape (filename)) {
-    		System.out.println("File not found, wrong dimension or too short!");
-    	};
-    	myArena.findBestSlope(0);
-    	printStartingPointToConsole();
-    	printBestSlopeToConsole();
- 	
+	SkiingSG myArena = new SkiingSG();
+	if (!myArena.readFileToLandscape (args[0])) {
+	    System.out.println("File not found, wrong dimension or too short!");
+	} else {
+	    myArena.findBestSlope(0);
+	    myArena.printBestSlopeToConsole();
+	}
     }
-
-
 }
 
