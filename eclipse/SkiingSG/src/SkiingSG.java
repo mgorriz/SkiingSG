@@ -230,7 +230,8 @@ public class SkiingSG {
 	/* we found a leaf, let us check whether this is the maximum
 	 */
 	if ((t.east==null) && (t.north==null) && (t.west==null) && (t.south==null)) {
-	    if ( (t.diffLevel >= maxSteepness) && (t.distanceFromRoot >= maxLength)) {
+	    if ((t.distanceFromRoot > maxLength) ||
+		    ((t.distanceFromRoot == maxLength) && (t.diffLevel > maxSteepness))) {
 		maxLength = t.distanceFromRoot;
 		maxSteepness = t.diffLevel;
 		resultEnd = t.s;
