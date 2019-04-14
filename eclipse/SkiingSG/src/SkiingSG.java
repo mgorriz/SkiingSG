@@ -314,13 +314,16 @@ public class SkiingSG {
      * find a 1000x1000 matrix of integer values. The first two numbers should be 1000
      */
     public static void main(String[] args) {
-	SkiingSG myArena = new SkiingSG();
-	if (!myArena.readFileToLandscape (args[0])) {
-	    System.out.println("File not found, wrong dimension or too short!");
-	} else {
-	    myArena.findBestSlope(0);
-	    myArena.printBestSlopeToConsole();
-	}
+    	SkiingSG myArena = new SkiingSG();
+    	if (args.length != 1) {
+    		System.out.println("Set filename as argument.");
+    	} else 
+    		if (!myArena.readFileToLandscape (args[0])) {
+    			System.out.println("File not found, wrong dimension or too short!");
+    		} else {
+    			myArena.findBestSlope(0);
+    			myArena.printBestSlopeToConsole();
+    		}
     }
 }
 
